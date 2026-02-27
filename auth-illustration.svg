@@ -1,0 +1,170 @@
+const trendingFoodsEl = document.getElementById('trendingFoods');
+const weekendDemandEl = document.getElementById('weekendDemand');
+const revenueBoostEl = document.getElementById('revenueBoost');
+const aiSuggestionsEl = document.getElementById('aiSuggestions');
+const lastUpdatedEl = document.getElementById('lastUpdated');
+const userLabel = document.getElementById('userLabel');
+const logoutBtn = document.getElementById('logoutBtn');
+const locationSelect = document.getElementById('locationSelect');
+const applyFilterBtn = document.getElementById('applyFilterBtn');
+const apiKeyInput = document.getElementById('apiKeyInput');
+const saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
+
+const userRaw = localStorage.getItem('food_agent_user');
+if (!userRaw) {
+  window.location.href = '/login.html';
+}
+
+let currentUser = null;
+try {
+  currentUser = JSON.parse(userRaw || '{}');
+} catch (_e) {
+  localStorage.removeItem('food_agent_user');
+  window.location.href = '/login.html';
+}
+
+if (!currentUser || !currentUser.email) {
+  localStorage.removeItem('food_agent_user');
+  window.location.href = '/login.html';
+}
+
+let locationFilter = '';
+let apiKey = localStorage.getItem('food_agent_api_key') || '';
+apiKeyInput.value = apiKey;
+const profileBits = [
+  currentUser.name,
+  currentUser.restaurantName ? `@ ${currentUser.restaurantName}` : '',
+  currentUser.location ? `- ${currentUser.location}` : '',
+];
+userLabel.textContent = `${profileBits.filter(Boolean).join(' ')} (${currentUser.email})`;
+
+const renderTrendingFoods = (items) => {
+  trendingFoodsEl.innerHTML = '';
+  if (!items.length) {
+    trendingFoodsEl.innerHTML = '<li>No trend data yet.</li>';
+    return;
+  }
+
+  items.forEach((item) => {
+    const li = document.createElement('li');
+    li.textContent = `${item.food}: ${item.count}`;
+    trendingFoodsEl.appendChild(li);
+  });
+};
+
+const renderWeekendDemand = (weekendDemand) => {
+  const rows = weekendDemand.breakdown || [];
+  if (!rows.length) {
+    weekendDemandEl.innerHTML = '<p>No weekend demand data.</p>';
+    return;
+  }
+
+  weekendDemandEl.innerHTML = `
+    <p>Total Weekend Posts: <strong>${weekendDemand.totalWeekendPosts}</strong></p>
+    <p>Weekend Multiplier: <strong>${weekendDemand.weekendMultiplier}</strong></p>
+    ${rows.map((r) => `<p>${r.day}: ${r.demandCount}</p>`).join('')}
+  `;
+};
+
+const renderRevenueBoost = (model) => {
+  revenueBoostEl.innerHTML = `
+    <p>Trend Score: <strong>${model.trendScore}</strong></p>
+    <p>Price Estimate: <strong>$${model.priceEstimate}</strong></p>
+    <p>Projected Revenue Increase: <strong>${model.projectedRevenueIncreasePercent}%</strong></p>
+  `;
+};
+
+const renderAiSuggestions = (suggestions) => {
+  aiSuggestionsEl.innerHTML = '';
+  suggestions.forEach((item) => {
+    const li = document.createElement('li');
+    li.textContent = `${item.recommendedDish} - ${item.reason}`;
+    aiSuggestionsEl.appendChild(li);
+  });
+};
+
+const fetchLocations = async () => {
+  const typedKey = apiKeyInput.value.trim();
+  const activeKey = typedKey || apiKey;
+  if (!activeKey) return;
+
+  const response = await fetch('/api/locations', {
+    headers: { 'x-api-key': activeKey },
+  });
+
+  if (!response.ok) return;
+
+  const data = await response.json();
+  const locations = data.locations || [];
+
+  const existing = locationFilter;
+  locationSelect.innerHTML = '<option value="">All Locations</option>';
+  locations.forEach((item) => {
+    const option = document.createElement('option');
+    option.value = item.location;
+    option.textContent = `${item.location} (${item.last7DaysPosts} recent)`;
+    locationSelect.appendChild(option);
+  });
+  locationSelect.value = existing;
+};
+
+const fetchDashboard = async () => {
+  const typedKey = apiKeyInput.value.trim();
+  const activeKey = typedKey || apiKey;
+
+  if (!activeKey) {
+    throw new Error('API key is required. Enter API key and click Save Key.');
+  }
+
+  const query = locationFilter ? `?location=${encodeURIComponent(locationFilter)}` : '';
+  const response = await fetch(`/api/dashboard${query}`, {
+    headers: { 'x-api-key': activeKey },
+  });
+  if (!response.ok) {
+    let message = 'Failed to fetch dashboard data';
+    try {
+      const err = await response.json();
+      if (err && err.error) message = err.error;
+    } catch (_e) {}
+    throw new Error(message);
+  }
+
+  const data = await response.json();
+  renderTrendingFoods(data.trendingFoods || []);
+  renderWeekendDemand(data.weekendDemand || {});
+  renderRevenueBoost(data.revenuePrediction || {});
+  renderAiSuggestions(data.aiRecommendations || []);
+
+  const ts = new Date(data.generatedAt || Date.now());
+  lastUpdatedEl.textContent = `Last updated: ${ts.toLocaleString()}`;
+};
+
+const refresh = async () => {
+  try {
+    await fetchDashboard();
+  } catch (error) {
+    lastUpdatedEl.textContent = `Last updated: error - ${error.message}`;
+  }
+};
+
+applyFilterBtn.addEventListener('click', () => {
+  locationFilter = locationSelect.value.trim();
+  refresh();
+});
+
+saveApiKeyBtn.addEventListener('click', () => {
+  apiKey = apiKeyInput.value.trim();
+  localStorage.setItem('food_agent_api_key', apiKey);
+  fetchLocations();
+  refresh();
+});
+
+logoutBtn.addEventListener('click', () => {
+  localStorage.removeItem('food_agent_user');
+  window.location.href = '/login.html';
+});
+
+fetchLocations();
+refresh();
+setInterval(refresh, 5000);
+setInterval(fetchLocations, 15000);

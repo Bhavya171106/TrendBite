@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register | Hyper-Local Food Trend Agent</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="auth-shell">
+    <section class="auth-visual">
+      <img src="/assets/trendbite-register.png" alt="TrendBite restaurant onboarding visual" />
+      <h2>Get Your Restaurant Onboard</h2>
+      <p>Create your account and start receiving real-time food trend intelligence for your location.</p>
+    </section>
+
+    <section class="auth-card">
+      <span class="auth-badge">New Account</span>
+      <h1>Register</h1>
+      <p>Create your account to use the dashboard.</p>
+      <form id="registerForm">
+        <label for="name">Name</label>
+        <input id="name" name="name" type="text" required />
+
+        <label for="restaurantName">Restaurant / Hotel Name</label>
+        <input id="restaurantName" name="restaurantName" type="text" required />
+
+        <label for="location">Location</label>
+        <input id="location" name="location" type="text" placeholder="e.g. Hyderabad" required />
+
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" required />
+
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" minlength="6" required />
+
+        <button type="submit">Register</button>
+      </form>
+      <p class="auth-message" id="authMessage"></p>
+      <p class="auth-link">Already have an account? <a href="/login.html">Login</a></p>
+    </section>
+  </main>
+  <script src="register.js"></script>
+</body>
+</html>
