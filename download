@@ -1,0 +1,7 @@
+PORT=3000
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=Srujan@18
+DB_NAME=food_trend_agent
+API_KEY=SrujanFoodApiKey@2026
